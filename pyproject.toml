@@ -1,0 +1,16 @@
+[build-system]
+requires = ["setuptools>=42", "wheel", "taskipy"]
+build-backend = "setuptools.build_meta"
+
+[tool.taskipy.tasks]
+
+format = """
+isort .
+black .
+"""
+kill = "kill -9 $(lsof -t -i :8000)"
+test = "pytest -v"
+run = """
+python3 app/main.py
+"""
+doc = "mkdocs serve"
