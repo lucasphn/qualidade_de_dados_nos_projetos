@@ -1,14 +1,38 @@
-# Welcome to MkDocs
+# Data Quality
 
-For full documentation visit [mkdocs.org](https://www.mkdocs.org).
+Para desenvolver o desafio de negócio, vamos montar a seguinte ETL:
 
-## Commands do mkdocs
+## Fluxo
 
-* `mkdocs new [dir-name]` - Create a new project.
-* `mkdocs serve` - Start the live-reloading docs server.
-* `mkdocs build` - Build the documentation site.
-* `mkdocs -h` - Print help message and exit.
+```mermaid
+graph TD;
+    A[Configura Variáveis] --> B[Ler o Banco SQL];
+    B --> V[Validação do Schema de Entrada];
+    V -->|Falha| X[Alerta de Erro];
+    V -->|Sucesso| C[Transformar os KPIs];
+    C --> Y[Validação do Schema de Saída];
+    Y -->|Falha| Z[Alerta de Erro];
+    Y -->|Sucesso| D[Salvar no DuckDB];
+```
 
-## Project layout
+### Contrato de Dados
 
-Olá, essa é a minha documentação!
+::: app.schema_crm.ProdutoSchema
+
+### Transformações
+
+#### Configura variáveis 
+
+::: app.etl.load_settings
+
+#### Ler o Banco SQL
+
+::: app.etl.extrair_do_sql
+
+#### Incluir novas Colunas de KPI's
+
+::: app.etl.transformar
+
+#### Salvando tabela no DuckDB
+
+::: app.etl.load_to_duckdb

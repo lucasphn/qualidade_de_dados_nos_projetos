@@ -1,8 +1,9 @@
 import os
 import pandas as pd
 import pandera as pa
+import duckdb
 
-from schema_crm import ProdutoSchema
+from schema_crm import ProdutoSchema, ProductSchemaKPI
 from pathlib import Path
 from dotenv import load_dotenv
 from sqlalchemy import create_engine
@@ -24,7 +25,8 @@ def load_settings():
 
     return settings
 
-@pa.check_output(schema=ProdutoSchema, lazy=True)
+# Meu decorador pandera que valida o schema do meu banco de dados
+@pa.check_output(schema=ProdutoSchema, lazy=True) #lazy serve para validar toda a linha
 def extrair_do_sql(query: str) -> pd.DataFrame:
     """
     Extrai dados do banco de dados SQL usando a consulta fornecida.
@@ -48,7 +50,68 @@ def extrair_do_sql(query: str) -> pd.DataFrame:
 
     return df_crm
 
-if __name__ == '__main__':
-     query = 'SELECT * FROM produtos_bronze'
-     df_crm = extrair_do_sql(query=query)
-     print(df_crm)
+#recebo meus dados, da leitura anterior, por isso input, e depois faço um output, com a validação correta das colunas de KPI's , note que as classes mudam!!!
+@pa.check_input(ProdutoSchema, lazy=True)  #lazy serve para validar toda a linha
+@pa.check_output(ProductSchemaKPI, lazy=True) #lazy serve para validar toda a linha
+def transformar(df: pd.DataFrame) -> pd.DataFrame:
+    """
+    Transforma os dados do DataFrame aplicando cálculos e normalizações.
+
+    Args:
+        df: DataFrame do Pandas contendo os dados originais.
+
+    Returns:
+        DataFrame do Pandas após a aplicação das transformações.
+    """
+    # Calcular valor_total_estoque
+    df['valor_total_estoque'] = df['quantidade'] * df['preco']
+    
+    # Normalizar categoria para maiúsculas
+    df['categoria_normalizada'] = df['categoria'].str.lower()
+    
+    # Determinar disponibilidade (True se quantidade > 0)
+    df['disponibilidade'] = df['quantidade'] > 0
+    
+    return df
+
+# ARMAZENANDO NOSSOS DADOS NO DUCKDB
+
+@pa.check_input(ProductSchemaKPI, lazy=True)
+def load_to_duckdb(df: pd.DataFrame, table_name: str, db_file: str = 'my_duckdb.db'):
+    """
+    Carrega o DataFrame no DuckDB, criando ou substituindo a tabela especificada.
+
+    Args:
+        df: DataFrame do Pandas para ser carregado no DuckDB.
+        table_name: Nome da tabela no DuckDB onde os dados serão inseridos.
+        db_file: Caminho para o arquivo DuckDB. Se não existir, será criado.
+    """
+    # Conectar ao DuckDB. Se o arquivo não existir, ele será criado.
+    con = duckdb.connect(database=db_file, read_only=False)
+    
+    # Registrar o DataFrame como uma tabela temporária
+    con.register('df_temp', df)
+    
+    # Utilizar SQL para inserir os dados da tabela temporária em uma tabela permanente
+    # Se a tabela já existir, substitui.
+    con.execute(f"CREATE OR REPLACE TABLE {table_name} AS SELECT * FROM df_temp")
+    
+    # Fechar a conexão
+    con.close()
+
+
+if __name__ == "__main__":
+    
+    query = "SELECT * FROM produtos_bronze_email"
+    # EXTRAÇÃO
+    df_crm = extrair_do_sql(query=query)
+    # TRANSFORMAÇÃO
+    df_crm_kpi = transformar(df_crm)
+
+    # CARREGAMENTO DE DADOS EM DUCK DB  (IDEIA INICIAL)
+    load_to_duckdb(df=df_crm_kpi, table_name="tabela_kpi")
+
+    # CARREGANDO EM JSON (OPÇÃO BÔNUS)
+    with open("inferred_schema.json", "w") as file:
+        file.write(df_crm_kpi.to_json(orient='records', lines=True))    
+

@@ -1,6 +1,9 @@
 from pydantic import BaseModel, PositiveFloat, PositiveInt, ValidationError
 
+# Neste primeiro exemplo, vamos utilizar Pydantic. Essa biblioteca itera sobre a linha ou item do meu conjunto de dados.
+
 # Exemplo de entrada de dados para verificação
+# Forçando erro na linha 1
 dados = {
     "id_produto": ['aqui vai dar erro', 2, 3, 4, 5, 6, 7, 8, 9, 10],
     "nome": ["Produto A", "Produto B", "Produto C", "Produto D", "Produto E", 
@@ -36,3 +39,4 @@ for i in range(len(dados["id_produto"])):
 
     except ValidationError as e:
         print(f"Erro de validação no item {i + 1}:", e)
+

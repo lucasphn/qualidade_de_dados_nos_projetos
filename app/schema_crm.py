@@ -23,12 +23,14 @@ class ProdutoSchema(pa.SchemaModel):
     quantidade: Series[int] = pa.Field(ge=1, le=2000)
     preco: Series[float] = pa.Field(gt=0)
     categoria: Series[str]
-    # email: Series[str] = pa.Field(regex=email_regex)
+    email: Series[str] = pa.Field(regex=email_regex)
 
     class Config:
         coerce = True # garantir que os tipos de dados estejam iguais ao nosso schema
         strict = True # garantir que os meus dados estejam com a mesma quantidade de colunas do schema
 
+
+# criando o Schema de validação após o cálculo de KPI, nos preparando para criar mais colunas em nossa tabela e salvar o resultado em outro banco
 class ProductSchemaKPI(ProdutoSchema):
 
     valor_total_estoque: Series[float] = pa.Field(ge=0)  # O valor total em estoque deve ser >= 0
